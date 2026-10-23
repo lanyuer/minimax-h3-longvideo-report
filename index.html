@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MiniMax H3 连续/长视频社区方案调研报告</title>
+<meta name="description" content="MiniMax H3（Hailuo H3）本地 ComfyUI 与社区 API 在连续视频、长视频制作上的方案分类、效果与共识汇总（非官方）。" />
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121821;
+    --panel2: #182130;
+    --border: #273246;
+    --text: #e7eef8;
+    --muted: #9aabbf;
+    --accent: #5bb8ff;
+    --accent2: #7dffa8;
+    --warn: #ffc857;
+    --danger: #ff7b7b;
+    --chip: #1e2a3b;
+    --shadow: 0 10px 40px rgba(0,0,0,.35);
+    --radius: 14px;
+    --max: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #16324f 0%, transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, #1a3a2a 0%, transparent 45%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 24px 18px 80px; }
+  header.hero {
+    background: linear-gradient(180deg, rgba(24,33,48,.95), rgba(18,24,33,.92));
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 26px;
+    box-shadow: var(--shadow);
+    margin-bottom: 22px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    letter-spacing: .04em;
+    color: var(--accent2);
+    background: rgba(125,255,168,.08);
+    border: 1px solid rgba(125,255,168,.25);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  h1 { margin: 0 0 10px; font-size: clamp(1.55rem, 3vw, 2.1rem); line-height: 1.25; }
+  .lead { color: var(--muted); margin: 0 0 16px; font-size: 1.02rem; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 14px;
+    color: var(--muted); font-size: .92rem;
+  }
+  nav.toc {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: blur(10px);
+    background: rgba(11,15,20,.82);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px;
+    margin: 16px 0 28px;
+  }
+  nav.toc .label { font-size: .8rem; color: var(--muted); margin: 0 0 8px 4px; }
+  nav.toc ul {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px;
+  }
+  nav.toc a {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--chip);
+    color: var(--text);
+    font-size: .9rem;
+    border: 1px solid transparent;
+  }
+  nav.toc a:hover { border-color: var(--accent); text-decoration: none; }
+  section.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    margin: 0 0 22px;
+    box-shadow: var(--shadow);
+  }
+  section.card h2 {
+    margin: 0 0 8px;
+    font-size: 1.35rem;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  section.card h3 { margin: 18px 0 8px; font-size: 1.08rem; color: #d7e6f8; }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+  .box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .box.good h4 { color: var(--accent2); margin: 0 0 6px; }
+  .box.bad h4 { color: var(--danger); margin: 0 0 6px; }
+  .box.note h4 { color: var(--warn); margin: 0 0 6px; }
+  .box ul, .sources ul, .steps ol { margin: 6px 0 0; padding-left: 1.15rem; }
+  .box li, .sources li, .steps li { margin: 4px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .chip {
+    font-size: .78rem;
+    background: var(--chip);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .chip.ok { color: var(--accent2); border-color: rgba(125,255,168,.35); }
+  .chip.warn { color: var(--warn); border-color: rgba(255,200,87,.35); }
+  .media {
+    margin: 14px 0;
+    background: #06090e;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .media video, .media iframe {
+    display: block;
+    width: 100%;
+    max-height: 520px;
+    background: #000;
+    border: 0;
+  }
+  .media iframe { aspect-ratio: 16/9; max-height: none; }
+  .caption {
+    padding: 10px 12px;
+    font-size: .88rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92rem;
+    margin: 10px 0;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--panel2); color: #cfe0f5; }
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .86em;
+    background: #0a121c;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 5px;
+  }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(91,184,255,.06);
+    padding: 10px 12px;
+    border-radius: 0 10px 10px 0;
+    margin: 12px 0;
+    color: var(--muted);
+  }
+  .callout strong { color: var(--text); }
+  footer {
+    margin-top: 28px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--muted);
+    font-size: .9rem;
+    background: rgba(18,24,33,.7);
+  }
+  .top3 { counter-reset: top; }
+  .top3 .item {
+    position: relative;
+    padding-left: 48px;
+    margin: 12px 0;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 14px 14px 56px;
+  }
+  .top3 .item::before {
+    counter-increment: top;
+    content: counter(top);
+    position: absolute;
+    left: 14px; top: 14px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3d8fd6, #2f6b4f);
+    display: grid; place-items: center;
+    font-weight: 700;
+  }
+  .sources { font-size: .92rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .88rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="badge">社区非官方汇总 · 非 MiniMax / Comfy 官方文档</div>
+    <h1>MiniMax H3 连续视频 / 长视频<br/>社区方案与效果调研报告</h1>
+    <p class="lead">
+      覆盖 Reddit、GitHub、Hugging Face、Bilibili、YouTube 与相关 API 文档，
+      区分<strong>官方开放权重 + ComfyUI 原生能力</strong>与<strong>社区自定义节点 / 工作流 hack</strong>，
+      按技术路线归类，并尽量嵌入可直接播放的公开 demo。
+    </p>
+    <div class="meta">
+      <span>调研日期：<strong>2026-10-23（Asia/Taipei）</strong></span>
+      <span>别名：MiniMax-Hailuo / Hailuo H3 / Minimax H3</span>
+      <span>焦点：连续镜头、分段拼接、音视频同步延长</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="分类导航">
+    <p class="label">分类导航</p>
+    <ul>
+      <li><a href="#summary">总览与共识</a></li>
+      <li><a href="#top3">可信方案 Top 3</a></li>
+      <li><a href="#official">官方能力边界</a></li>
+      <li><a href="#masked-av">1. 原生 Masked AV / 潜空间续写</a></li>
+      <li><a href="#motion-context">2. Motion Context 运动·音频钉接</a></li>
+      <li><a href="#fl2va">3. FL2VA 首尾帧 + 质量重置</a></li>
+      <li><a href="#pixel-chain">4. 末帧当首帧（像素链路）</a></li>
+      <li><a href="#ref2va">5. Ref2VA / V2V 参考续写</a></li>
+      <li><a href="#storyboard">6. Storyboard / 导演台多段</a></li>
+      <li><a href="#audio">7. 音频驱动 / Talking Avatar</a></li>
+      <li><a href="#upscale">8. 低分长渲 + 放大拼接</a></li>
+      <li><a href="#models">9. 模型与量化基建</a></li>
+      <li><a href="#matrix">方案对照表</a></li>
+      <li><a href="#blind">搜索盲区</a></li>
+      <li><a href="#sources">来源索引</a></li>
+    </ul>
+  </nav>
+
+  <section class="card" id="summary">
+    <h2>总览与社区共识</h2>
+    <p>
+      MiniMax H3 开放权重在 ComfyUI 中可一次生成约 <strong>5–15 秒</strong>训练甜点区、节点上可写更长（文档称最长约 150 秒量级），
+      但社区几乎一致认为：<strong>「无限长单段」不现实</strong>；实用做法是把长片拆成 5–15 秒（或更短）chunk，
+      用某种形式的<strong>上下文交接（context handoff）</strong>再拼接。
+    </p>
+    <div class="callout">
+      <strong>2026 年中后期的分水岭：</strong>
+      从「解码末帧 → 再当 next first_frame」（易 VAE 累积劣化）演进到
+      「把上一段 joint AV latent 尾部原样保护进下一段」（Masked AV / Motion Context / Guided Continuation）。
+      Reddit 与 HF 讨论里，后者被视为当前质量上限的主流方向。
+    </div>
+    <h3>共识要点（可追溯）</h3>
+    <ul>
+      <li><strong>少 hop、长 chunk 优于多 hop、短 chunk</strong>：末帧链路下，每 hop 高频细节约损失数个百分点；改用 10s 级片段可显著减少损坏点（r/StableDiffusion，2026-08）。</li>
+      <li><strong>潜空间续写 &gt; 像素往返</strong>：VAE encode/decode 一轮即可让 Laplacian 方差近似腰斩（同帖实测）；Motion Context / Masked AV 直接钉 latent。</li>
+      <li><strong>音频是第二战场</strong>：仅靠画面衔接会出现「翻唱感」接缝；需把音频时间坐标钉到新片段时间线，或做 de-click / 帧网格对齐（17k+5）。</li>
+      <li><strong>FL2VA 尾帧常冻结</strong>：Infinite Continuation Suite 专门做 Auto Handover，切掉不稳定 landing tail 再交接。</li>
+      <li><strong>Turbo / 过蒸馏 LoRA 对长链更脆</strong>：HF 讨论与官方文档均提示续接更易「烧片」；长片不少人关掉 turbo，改 Spectrum / Sage / Kitchen。</li>
+      <li><strong>Ref 模式与首尾帧锚定互斥</strong>（Hailuo/官方参考用法讨论）：延长时要在「锚帧」与「视频参考槽」之间二选一。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="top3">
+    <h2>可信方案 Top 3（调研时点）</h2>
+    <div class="top3">
+      <div class="item">
+        <strong>Herrgotts H3 Infinite Continuation Suite v1.4</strong>
+        <p class="muted small">原生 Masked AV + FL2VA 质量重置 + 自动 handover/stitch。有公开多段拼接 mp4 demo（7 clip / 11 clip 示例说明）。适合要「电影感首尾帧控制」的长片。</p>
+        <p class="small"><a href="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="https://www.reddit.com/r/StableDiffusion/comments/1vlqn1i/release_of_h3_infinite_continuation_suite_for/" target="_blank" rel="noopener">Reddit 发布帖（可能需登录）</a></p>
+      </div>
+      <div class="item">
+        <strong>ComfyUI-H3-Motion-Context（及 MultiRef / Director 段间引导）</strong>
+        <p class="muted small">用 H3 keyframe/guide 机制钉住上一段尾部运动与音频，Trim 掉重叠后拼接。Reddit 有量化接缝指标（音频相关从 ~0.45→0.95+）。适合 clip chaining、音乐/对白连续。</p>
+        <p class="small"><a href="https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context" target="_blank" rel="noopener">Motion-Context</a> ·
+        <a href="https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef" target="_blank" rel="noopener">MultiRef</a></p>
+      </div>
+      <div class="item">
+        <strong>原生 Guided Latent Continuation / Continuum / RuneXX V2V Extend</strong>
+        <p class="muted small">不依赖「末帧像素」：overlap latent window + append suffix，或 latent masking 延长任意输入视频。HF 用户反馈「最干净、最好上手」的延长流之一。适合已有成片要往后加时长。</p>
+        <p class="small"><a href="https://github.com/ttulttul/ComfyUI-Minimax-H3-Continuation" target="_blank" rel="noopener">Guided Continuation</a> ·
+        <a href="https://github.com/ukr8b3g-cmyk/ComfyUI-H3-Continuum" target="_blank" rel="noopener">Continuum</a> ·
+        <a href="https://huggingface.co/RuneXX/Minimax-H3-Workflows/tree/main/Video-to-Video" target="_blank" rel="noopener">RuneXX V2V</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="official">
+    <h2>官方能力边界（ComfyUI 文档）</h2>
+    <p class="muted small">来源：<a href="https://docs.comfy.org/zh/tutorials/video/minimax/minimax-h3" target="_blank" rel="noopener">ComfyUI MiniMax H3 中文指南</a>（调研时已抓取）。</p>
+    <table>
+      <thead><tr><th>项目</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>模态</td><td>单次前向生成视频 + 原生立体声音频（语音/音效/音乐）</td></tr>
+        <tr><td>训练甜点</td><td>约 124–362 帧（约 5–15 s @24fps）；帧网格 <code>17k+5</code></td></tr>
+        <tr><td>节点 length</td><td>5–3600 帧（约 0.2–150 s）；超训练范围易 OOM / 质量塌</td></tr>
+        <tr><td>模式</td><td>T2V、I2V（含可选首尾帧）、R2V（图/视频/音频参考）、多帧 Guide、Fun ControlNet</td></tr>
+        <tr><td>官方续接</td><td>模板 <code>video_minimax_h3_i2v_continuation</code>：用上段末帧 I2V；文档明确误差会累积</td></tr>
+        <tr><td>Anti-Burn</td><td>续接链可加载社区 <a href="https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA" target="_blank" rel="noopener">H3-Anti-Burn-LoRA</a>（文档建议 strength≈0.5，勿用于首段）</td></tr>
+        <tr><td>与托管 API</td><td>本地开放权重约 1MP/24fps；2K 等来自托管服务，需另放大</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>重要区分：</strong>官方「能生成较长 length」≠「社区意义上的无缝连续长片」。后者几乎都是多段 + 交接协议。</div>
+  </section>
+
+  <!-- 1 -->
+  <section class="card" id="masked-av">
+    <h2>1. 原生 Masked AV / 潜空间续写（state / memory handoff）</h2>
+    <div class="chips">
+      <span class="chip ok">推荐主线</span>
+      <span class="chip">chunked generation</span>
+      <span class="chip">latent continuation</span>
+      <span class="chip">AV sync</span>
+    </div>
+    <p>
+      核心思想：下一段采样开始时，把上一段<strong>联合视频+音频 latent 的尾部窗口</strong>复制进新目标，并用 denoise mask / guide
+      保护这段「已经发生过的现实」，只对后缀做真正的新生成；再丢弃重叠、append 新后缀。
+    </p>
+    <h3>代表实现</h3>
+    <ul>
+      <li><strong>Herrgotts-H3-Infinite-Continuation-Suite v1.4</strong>：依赖 ComfyUI PR #15375 的原生 H3 AV-mask；默认保护约 39 帧（~1.625s）；Auto Handover 避开 FL2VA 冻结尾；Saved Chain Stitcher 防 OOM。</li>
+      <li><strong>ttulttul/ComfyUI-Minimax-H3-Continuation</strong>：Guided Continuation Window + Latent Tail Guide + Append；示例 overlap=22、extension=119（约 +5s）。</li>
+      <li><strong>ukr8b3g-cmyk/ComfyUI-H3-Continuum</strong>：按约 5–15s chunk 前进，带 save/resume、部分重试；Comfy Registry 可装。</li>
+    </ul>
+
+    <h3>效果展示（可直接播放）</h3>
+    <div class="media">
+      <video controls preload="metadata" playsinline
+        src="https://raw.githubusercontent.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite/main/assets/Infinite-Continuation-Suite_v1.4_Example-1.mp4">
+        您的浏览器不支持 video 标签。
+      </video>
+      <div class="caption">
+        Demo A · Infinite Continuation Suite <strong>v1.4</strong> 示例（仓库 assets，调研时 HTTP 200，约 6.4MB）。
+        作者说明为多段 FL2VA + Native Masked AV 自动拼接直出。来源：
+        <a href="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite" target="_blank" rel="noopener">GitHub README</a>
+      </div>
+    </div>
+    <div class="media">
+      <video controls preload="metadata" playsinline
+        src="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite/releases/download/v1.2.0/h3-infinite-7-clip-example.mp4">
+        您的浏览器不支持 video 标签。
+      </video>
+      <div class="caption">
+        Demo B · <strong>v1.2</strong> 七段拼接示例（GitHub Releases 直链，调研时约 8.3MB；浏览器会跟随 302）。
+        旧版为 guide-based 交接，质量对照用。若嵌入失败，请打开
+        <a href="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite/releases/tag/v1.2.0" target="_blank" rel="noopener">Release 页</a>下载。
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>避免像素域 VAE 往返造成的纹理「像素风化」</li>
+          <li>可同步携带原生音频上下文</li>
+          <li>可与 FL2VA Last Frame 做质量重置（Herrgott）</li>
+          <li>有内存友好的分段存盘 + 最终 stitch</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>依赖较新的 ComfyUI（mask / arbitrary guides）</li>
+          <li>累计 latent 仍可能对比度/身份漂移（社区承认无法无限零劣化）</li>
+          <li>节点与工作流学习曲线偏陡</li>
+        </ul>
+      </div>
+    </div>
+    <div class="box note"><h4>社区共识</h4>
+      <p>2026-08 起 Reddit 高赞帖与 v1.4 反馈帖将该路线视为「高质量无限续写」首选之一；仍建议关键剧情节点主动切镜，而非迷信单镜头无穷延伸。</p>
+    </div>
+    <div class="sources">
+      <h3>来源</h3>
+      <ul>
+        <li><a href="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite" target="_blank" rel="noopener">HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite</a></li>
+        <li><a href="https://github.com/ttulttul/ComfyUI-Minimax-H3-Continuation" target="_blank" rel="noopener">ttulttul/ComfyUI-Minimax-H3-Continuation</a></li>
+        <li><a href="https://github.com/ukr8b3g-cmyk/ComfyUI-H3-Continuum" target="_blank" rel="noopener">ukr8b3g-cmyk/ComfyUI-H3-Continuum</a></li>
+        <li><a href="https://www.reddit.com/r/StableDiffusion/comments/1vw1ytx/h3_infinite_continuation_suite_v14_fl2va_using/" target="_blank" rel="noopener">Reddit: Suite v1.4（可能需登录）</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="motion-context">
+    <h2>2. Motion Context：运动 + 音频钉接（keyframe / guide 链）</h2>
+    <div class="chips">
+      <span class="chip ok">成熟 chaining</span>
+      <span class="chip">audio-conditioned extension</span>
+      <span class="chip">overlap trim</span>
+    </div>
+    <p>
+      H3 的 Add Guide / keyframe 系统本可在时间轴任意位置钉参考；社区发现「只允许首尾」的限制是人为约束。
+      Motion Context 包用<strong>上一段 latent 尾部</strong>（非再编码像素）作为连续帧锚，并把音频时间坐标映射到新片段，
+      使接缝处是「同一条声轨的延续」而非翻唱。再配合 Trim 去掉重叠前缀后拼接。
+    </p>
+    <h3>代表实现</h3>
+    <ul>
+      <li><a href="https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context" target="_blank" rel="noopener">NikoDemon80/ComfyUI-H3-Motion-Context</a>（Reddit 发布附工作流；GPL-3.0）</li>
+      <li><a href="https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef" target="_blank" rel="noopener">seitanism/…-MultiRef</a>：续写、T2V/I2V 起步、多关键帧、AV Bridge 转场等</li>
+      <li><a href="https://github.com/tritant/ComfyUI_MiniMax_H3_Extender" target="_blank" rel="noopener">tritant/ComfyUI_MiniMax_H3_Extender</a>：多 clip 延长，强调 motion/visual/audio continuity、disk cache</li>
+      <li>AIMixer Director「段间引导」明确致谢 Motion-Context 思路（默认上下文 22 帧）</li>
+    </ul>
+
+    <h3>效果展示</h3>
+    <div class="media">
+      <iframe
+        src="https://www.youtube.com/embed/OS31rr2QfkU"
+        title="MiniMax H3 in ComfyUI: Multi-Keyframes, Long Videos & Video Extension"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="caption">
+        Demo · YouTube 教程演示 Multi-Keyframe、长视频分段拼接与 Motion Context Trim（
+        <a href="https://www.youtube.com/watch?v=OS31rr2QfkU" target="_blank" rel="noopener">原帖</a>）。
+        <span class="chip warn">嵌入可能受地区/登录/广告策略影响；若空白请点原链</span>
+      </div>
+    </div>
+    <p class="muted small">Reddit 原帖内嵌的两段 6s 拼接 demo 未找到稳定公开 mp4 直链 → 记为「未找到公开直链」，请看
+      <a href="https://www.reddit.com/r/StableDiffusion/comments/1vhppmv/clip_chaining_for_minimax_h3_motion_and_audio/" target="_blank" rel="noopener">r/StableDiffusion 帖</a>（可能需登录）。
+      作者声称：无 crossfade 硬接，运动与音频跨接缝延续；音频互相关从约 0.45 提升到 0.95+。</p>
+
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>音画同时连续，适合对白/音乐</li>
+          <li>比纯像素末帧链更抗糊化</li>
+          <li>可与导演台、MultiRef、多关键帧组合</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>长链仍有「复印件」式音频变闷</li>
+          <li>部分实现依赖 runtime patch / 版本自检</li>
+          <li>单机验证为主，分辨率外推需自测</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="fl2va">
+    <h2>3. FL2VA 首尾帧驱动 + 质量重置（first-last frame）</h2>
+    <div class="chips">
+      <span class="chip ok">强构图控制</span>
+      <span class="chip">quality reset</span>
+      <span class="chip">storyboard friendly</span>
+    </div>
+    <p>
+      每一段提供 First / Last 图像（或仅 Last），让模型在两端之间插值运动；下一段用新的 Last 当目标，
+      并用上一段上下文交接。Herrgott 强调：重复 Last Frame 可充当<strong>质量重置锚</strong>，把身份/构图拉回干净参考，对抗漂移。
+    </p>
+    <h3>与「像素末帧链」的差别</h3>
+    <p>FL2VA 的 Last 通常是<strong>干净的分镜静帧</strong>（或人工选定关键帧），不是上一段 VAE 解码糊帧；交接则尽量走 latent mask，而不是把糊帧硬钉成 next first。</p>
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>镜头语言可控（走位、落幅）</li>
+          <li>配合分镜图可做叙事长片</li>
+          <li>质量重置能打断劣化螺旋</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>尾帧易「冻住」需 Auto Handover 裁切</li>
+          <li>准备分镜图成本高</li>
+          <li>与 Ref2VA 参考槽用法互斥（官方讨论）</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small muted">可播放 demo 见上一节 Suite v1.4 / v1.2 视频（同一技术栈的 FL2VA 多段链）。</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="pixel-chain">
+    <h2>4. 末帧当首帧（pixel / I2V 朴素链路）</h2>
+    <div class="chips">
+      <span class="chip warn">入门易用 · 长链不推荐</span>
+      <span class="chip">last-frame-as-first</span>
+      <span class="chip">官方 continuation 模板</span>
+    </div>
+    <p>
+      流程：shot N 最后一帧 →（可选 VAE）→ 作为 shot N+1 的 <code>first_frame</code>。
+      官方模板 <code>video_minimax_h3_i2v_continuation</code> 即此思路；FlowDirector / ChainDirector 等也自动化了 last→first。
+    </p>
+    <div class="callout">
+      <strong>Reddit 实测警示（2026-08，u/DeliciousGorilla）：</strong>
+      8 段约 70s 单镜头，3090，pruned int8。背景纹理逐步「像素画化」；人脸相对更能靠先验回血。
+      单独 VAE 往返：Laplacian 方差 100%→49.3%，PSNR 22.1 dB；链上约每 hop 损失 ~2% 高频。
+      建议：更少、更长的 shot；对话按 ~2.5 词/秒对齐 17k+5 网格。
+      <a href="https://www.reddit.com/r/StableDiffusion/comments/1vh4mq5/has_anyone_found_a_better_way_to_chain_h3_shots_1/" target="_blank" rel="noopener">原帖</a>（可能需登录；未找到独立 mp4 直链）。
+    </div>
+    <h3>代表实现</h3>
+    <ul>
+      <li>官方 I2V continuation + 可选 Anti-Burn LoRA</li>
+      <li><a href="https://github.com/AlonAshken/ComfyUI-MiniMaxH3-FlowDirector" target="_blank" rel="noopener">FlowDirector</a>：时间轴分块、自动 last→first、目标 last_frame 过渡、恒定显存；建议每块 5–10s</li>
+      <li><a href="https://github.com/luxu1999/ComfyUI-MiniMaxH3-ChainDirector" target="_blank" rel="noopener">ChainDirector</a>：中文社区低显存向自动分段</li>
+    </ul>
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>概念简单，官方/教程多</li>
+          <li>恒定显存，易做到「分钟级」总时长</li>
+          <li>配合切镜仍可出片</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>单镜头长 hop 背景必糊</li>
+          <li>Turbo 时更早烧片</li>
+          <li>音频通常不自动连续</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted small">公开可嵌 mp4：未找到与「纯末帧链劣化对比」绑定的稳定直链；效果请以 Reddit 帖内嵌媒体为准。</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="card" id="ref2va">
+    <h2>5. Ref2VA / V2V：视频·图像·音频参考续写</h2>
+    <div class="chips">
+      <span class="chip ok">延长成片利器</span>
+      <span class="chip">reference mode</span>
+      <span class="chip">identity lock</span>
+    </div>
+    <p>
+      参考生视频可挂最多约 <strong>9 图 + 3 视频 + 3 音频</strong>（总参考文件有上限；单段视频参考常见 2–15s）。
+      社区经验：<strong>视频参考锁运动/运镜/调色/颗粒</strong>，<strong>静图参考锁身份与场景</strong>；提示词需明确标签谁负责什么。
+      纯 Extend 工具在 Hailuo 侧约到 30s 量级，官方建议仍用 2–5s 短步链式延长。
+    </p>
+    <h3>代表实现</h3>
+    <ul>
+      <li><a href="https://huggingface.co/RuneXX/Minimax-H3-Workflows/tree/main/Video-to-Video" target="_blank" rel="noopener">RuneXX Minimax-H3-Workflows · Video-to-Video</a>：latent masking「Extend Any Video」；讨论区用户称「试过所有延长流里最干净」</li>
+      <li>ComfyUI 原生 R2V 模板；多帧 Add Guide</li>
+      <li>社区微调 <a href="https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity" target="_blank" rel="noopener">Singularity ref2va v2</a> 常被用于参考向生成（非延长协议本身）</li>
+    </ul>
+    <h3>效果展示</h3>
+    <p class="muted">
+      RuneXX 讨论页有演示描述与用户对比，但<strong>未托管稳定公共 mp4 直链</strong>（页面内媒体依赖 HF/论坛附件）。
+      请打开：
+      <a href="https://huggingface.co/RuneXX/Minimax-H3-Workflows/discussions/2" target="_blank" rel="noopener">HF Discussion #2 · V2V Extend Any Video</a>。
+      同讨论共识：完全无劣化的无限单镜头不现实；主动切镜 + 参考主体可做出数分钟成片。
+    </p>
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>对「已有视频往后加」极友好</li>
+          <li>身份与场景可用静图补锚</li>
+          <li>可与 latent mask 结合减少接缝感</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>与 first/last 锚模式互斥</li>
+          <li>提示词/标签不清晰会「重发明」房间几何</li>
+          <li>音频接缝 tick、对比度漂移仍常见</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card" id="storyboard">
+    <h2>6. Storyboard / 导演台：多提示词分段生产</h2>
+    <div class="chips">
+      <span class="chip">storyboard / multi-prompt</span>
+      <span class="chip">production UX</span>
+      <span class="chip">中文友好</span>
+    </div>
+    <p>把「长视频」当成制片问题：分镜 → 逐段采样 → 人工/自动验收 → 合并。技术上仍落到 FL2VA / Motion Context / Masked AV 之一。</p>
+    <h3>代表实现</h3>
+    <ul>
+      <li><a href="https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director" target="_blank" rel="noopener">AIMixer/ComfyUI_MiniMaxH3_Director</a>：多段时间轴、t2v/i2v/fl2v/r2v/v2v、段间引导（5/22/39/56）、Semantic Bridge、SelfLift、Refine/Upscale；中文 README 完善</li>
+      <li><a href="https://github.com/loopforge0/ComfyUI-H3-Continuous" target="_blank" rel="noopener">loopforge0/ComfyUI-H3-Continuous</a>：链式 H3 Render Segment；每段精确回放上段末 ~1.6s；一次 Run 出连续 take（示例 ~21s 三镜）</li>
+      <li><a href="https://github.com/acer1204/h3-storyboard-ALLInOne" target="_blank" rel="noopener">acer1204/h3-storyboard-ALLInOne</a>：本地 LLM + 官方 prompt skills → 分镜提示词 → ComfyUI；FL2VA Movie（2–24 张分镜 → N−1 段，用上一段真实末帧接龙）</li>
+      <li><a href="https://github.com/AlonAshken/ComfyUI-MiniMaxH3-FlowDirector" target="_blank" rel="noopener">FlowDirector</a>：WYSIWYG 时间轴</li>
+    </ul>
+    <h3>中文社区（Bilibili）</h3>
+    <p>
+      <a href="https://www.bilibili.com/video/BV1miYM6xERf/" target="_blank" rel="noopener">BV1miYM6xERf ·「长视频一到后面就崩？无限时长 V4」</a>
+      ——面向「越往后越崩」的痛点讲无限时长工作流（系列课）。
+      <span class="chip warn">B 站通常无法用简单 &lt;video&gt; 直链嵌入；需打开页面（可能登录/地区限制）</span>
+    </p>
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>把生产流程产品化，可局部重跑</li>
+          <li>叙事连贯性优于无规划瞎续</li>
+          <li>中文资料相对集中</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>底层仍受模型漂移限制</li>
+          <li>插件依赖多，升级易碎</li>
+          <li>自动全流程质量参差</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="card" id="audio">
+    <h2>7. 音频驱动延长 / Talking Avatar</h2>
+    <div class="chips">
+      <span class="chip">audio-conditioned</span>
+      <span class="chip">API 路径</span>
+      <span class="chip">最长约 3 分钟级</span>
+    </div>
+    <p>
+      <strong>Pruna P-Video-2-Pro-Avatar</strong>（文档写明基于 MiniMax H3）：肖像 + 脚本或上传音频 → 口型/表情同步 talking video；
+      时长跟随音频，约 <strong>1 秒–3 分钟</strong>；长片在服务端分块拼接。分辨率 480p/768p（更高靠 upscale）。
+      文档坦承：换房间或大面积静态背景可能露接缝。
+    </p>
+    <ul>
+      <li>文档：<a href="https://docs.api.pruna.ai/guides/models/p-video-2-pro-avatar" target="_blank" rel="noopener">docs.api.pruna.ai · p-video-2-pro-avatar</a></li>
+      <li>产品页：<a href="https://www.pruna.ai/p-video-2-pro-avatar" target="_blank" rel="noopener">pruna.ai</a></li>
+    </ul>
+    <p class="muted small">公开可嵌演示 mp4：官方营销页有示例播放器，但<strong>未找到可稳定写入 &lt;video src&gt; 的永久直链</strong> → 请在产品页观看。本地 Comfy 侧则用原生音频 + Motion Context / Masked AV 做「声画一起续」。</p>
+    <div class="grid2">
+      <div class="box good"><h4>优点</h4>
+        <ul>
+          <li>对口播/数字人最长路径清晰</li>
+          <li>音频主导时长，交互简单</li>
+        </ul>
+      </div>
+      <div class="box bad"><h4>缺点</h4>
+        <ul>
+          <li>托管 API，费用与内容策略受限</li>
+          <li>非通用叙事长片方案</li>
+          <li>长块拼接仍可能露缝</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="card" id="upscale">
+    <h2>8. 低分辨率长渲 + 放大拼接（upscale + stitch）</h2>
+    <div class="chips">
+      <span class="chip">VRAM 策略</span>
+      <span class="chip">post pipeline</span>
+    </div>
+    <p>
+      HF / Civitai 讨论中的务实路线：在 <strong>0.2–0.4 MP</strong> 直接生成 20–40s（显存允许时甚至单段更长），
+      再按 124/192 帧 batch 放大到 1–2MP；或先短步延长，再统一上采样。
+      官方亦提示：用 24ch latent upscaler 避免 VAE 往返鬼影；精修 denoise 宜低以保住首段音频。
+    </p>
+    <div class="box note"><h4>社区共识</h4>
+      <p>放大不能消灭「延长漂移」，但能让你在可接受显存下先拿到时长，再抬清晰度。部分用户认为「先短后延再放大」比「高分辨率硬续」更稳。</p>
+    </div>
+    <p class="muted small">公开直链 demo：讨论中引用的 Civitai 示例图/视频依赖站点登录与 CDN，本报告<strong>不内嵌不可靠直链</strong>。</p>
+  </section>
+
+  <!-- 9 -->
+  <section class="card" id="models">
+    <h2>9. 模型与量化基建（支撑长片的算力前提）</h2>
+    <p>长片方案都假设你能反复跑 H3。社区常用：</p>
+    <ul>
+      <li><strong>Comfy-Org 官方 pruned</strong>：<code>pruned_int8_convrot</code>（约 21GB）模板默认；另有 w6a8（16GB）、bf16 等。</li>
+      <li><strong>Singularity ref2va v2</strong>（WarmBloodAban）：社区微调底座，偏参考/动作覆盖；见
+        <a href="https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity" target="_blank" rel="noopener">HF 模型卡</a>。</li>
+      <li><strong>WAS pruned/quantized Singularity</strong>：
+        <a href="https://huggingface.co/WAS/Minimax-h3_Singularity_v2_pruned" target="_blank" rel="noopener">WAS/Minimax-h3_Singularity_v2_pruned</a>
+        ——adaLN curve prune + int8/w6a8/w4a8，降低长链迭代的显存压力（剪枝误差与 PSNR 见该卡；属工程权衡非画质增益承诺）。</li>
+      <li><strong>Turbo / Anti-Burn / Spectrum</strong>：速度与长链稳定性互相拉扯；长连续镜头多数经验是少用强蒸馏。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="matrix">
+    <h2>方案对照表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>路线</th>
+          <th>连续性</th>
+          <th>画质抗劣化</th>
+          <th>音频连续</th>
+          <th>上手</th>
+          <th>典型上限策略</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Masked AV / Guided latent</td>
+          <td>高</td>
+          <td>高</td>
+          <td>高</td>
+          <td>中–难</td>
+          <td>无限段；主动切镜保质</td>
+        </tr>
+        <tr>
+          <td>Motion Context</td>
+          <td>高</td>
+          <td>中–高</td>
+          <td>高</td>
+          <td>中</td>
+          <td>多 clip 硬接/轻 trim</td>
+        </tr>
+        <tr>
+          <td>FL2VA + handover</td>
+          <td>高（有落幅）</td>
+          <td>高（可重置）</td>
+          <td>中–高</td>
+          <td>中</td>
+          <td>分镜驱动长叙事</td>
+        </tr>
+        <tr>
+          <td>末帧 I2V 链</td>
+          <td>中</td>
+          <td>低（多 hop）</td>
+          <td>低</td>
+          <td>易</td>
+          <td>少 hop / 常切镜</td>
+        </tr>
+        <tr>
+          <td>Ref2VA / V2V extend</td>
+          <td>中–高</td>
+          <td>中–高</td>
+          <td>中</td>
+          <td>中</td>
+          <td>延长成片 + 参考锁</td>
+        </tr>
+        <tr>
+          <td>导演台 / Storyboard</td>
+          <td>取决于底层</td>
+          <td>取决于底层</td>
+          <td>取决于底层</td>
+          <td>易–中（UX）</td>
+          <td>制片流程</td>
+        </tr>
+        <tr>
+          <td>Avatar API</td>
+          <td>中（服务端拼）</td>
+          <td>中</td>
+          <td>极高（音频主导）</td>
+          <td>易</td>
+          <td>~3 min 口播</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" id="blind">
+    <h2>搜索盲区与方法局限</h2>
+    <ul>
+      <li><strong>Reddit</strong>：大量关键帖与内嵌视频，但匿名抓取常 403/空白；本报告对 Reddit 媒体以「页面链接 + 可能需登录」标注，不伪造 mp4。</li>
+      <li><strong>Bilibili</strong>：中文教程密度高（无限时长、提示词、量化对比），但几乎没有可稳定 CORS 的 mp4 直链，只能链到 BV 号页面。</li>
+      <li><strong>X/Twitter、OpenArt</strong>：碎片化 demo 多，可复现工作流少，本轮未作为主证据。</li>
+      <li><strong>Civitai</strong>：有延长/放大讨论与样例，直链与地区策略不稳定，未强行嵌入。</li>
+      <li><strong>官方托管 Hailuo App「Extend」</strong>：与本地开放权重行为不完全相同；社区评论来自文档转述与用户经验，缺乏统一公开长片样本库。</li>
+      <li><strong>量化结论时效</strong>：节点与 ComfyUI nightly 迭代极快（2026-08 前后密集发布）；部署前请核对 README 的 Comfy 版本/PR 要求。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="sources">
+    <h2>来源索引（精选）</h2>
+    <div class="sources">
+      <h3>文档与模型</h3>
+      <ul>
+        <li><a href="https://docs.comfy.org/zh/tutorials/video/minimax/minimax-h3" target="_blank" rel="noopener">ComfyUI MiniMax H3 指南（中文）</a></li>
+        <li><a href="https://huggingface.co/Comfy-Org/MiniMax-H3" target="_blank" rel="noopener">Comfy-Org/MiniMax-H3</a></li>
+        <li><a href="https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity" target="_blank" rel="noopener">Singularity</a> ·
+            <a href="https://huggingface.co/WAS/Minimax-h3_Singularity_v2_pruned" target="_blank" rel="noopener">WAS pruned</a> ·
+            <a href="https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA" target="_blank" rel="noopener">Anti-Burn LoRA</a></li>
+        <li><a href="https://docs.api.pruna.ai/guides/models/p-video-2-pro-avatar" target="_blank" rel="noopener">Pruna P-Video-2-Pro-Avatar</a></li>
+      </ul>
+      <h3>GitHub 节点 / 工作流</h3>
+      <ul>
+        <li><a href="https://github.com/HerrgottMargott/Herrgotts-H3-Infinite-Continuation-Suite" target="_blank" rel="noopener">Infinite Continuation Suite</a></li>
+        <li><a href="https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context" target="_blank" rel="noopener">H3-Motion-Context</a> ·
+            <a href="https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef" target="_blank" rel="noopener">MultiRef</a></li>
+        <li><a href="https://github.com/ttulttul/ComfyUI-Minimax-H3-Continuation" target="_blank" rel="noopener">Minimax-H3-Continuation</a> ·
+            <a href="https://github.com/ukr8b3g-cmyk/ComfyUI-H3-Continuum" target="_blank" rel="noopener">H3-Continuum</a></li>
+        <li><a href="https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director" target="_blank" rel="noopener">MiniMaxH3_Director</a> ·
+            <a href="https://github.com/loopforge0/ComfyUI-H3-Continuous" target="_blank" rel="noopener">H3-Continuous</a> ·
+            <a href="https://github.com/acer1204/h3-storyboard-ALLInOne" target="_blank" rel="noopener">h3-storyboard-ALLInOne</a></li>
+        <li><a href="https://github.com/AlonAshken/ComfyUI-MiniMaxH3-FlowDirector" target="_blank" rel="noopener">FlowDirector</a> ·
+            <a href="https://github.com/tritant/ComfyUI_MiniMax_H3_Extender" target="_blank" rel="noopener">H3_Extender</a> ·
+            <a href="https://github.com/luxu1999/ComfyUI-MiniMaxH3-ChainDirector" target="_blank" rel="noopener">ChainDirector</a></li>
+      </ul>
+      <h3>社区讨论与教程</h3>
+      <ul>
+        <li><a href="https://www.reddit.com/r/StableDiffusion/comments/1vlqn1i/release_of_h3_infinite_continuation_suite_for/" target="_blank" rel="noopener">Reddit: Infinite Suite 发布</a></li>
+        <li><a href="https://www.reddit.com/r/StableDiffusion/comments/1vhppmv/clip_chaining_for_minimax_h3_motion_and_audio/" target="_blank" rel="noopener">Reddit: Motion Context chaining</a></li>
+        <li><a href="https://www.reddit.com/r/StableDiffusion/comments/1vh4mq5/has_anyone_found_a_better_way_to_chain_h3_shots_1/" target="_blank" rel="noopener">Reddit: 末帧链劣化实测</a></li>
+        <li><a href="https://www.reddit.com/r/StableDiffusion/comments/1w57vf7/best_way_to_extend_minimax_h3_videos/" target="_blank" rel="noopener">Reddit: Best way to extend</a></li>
+        <li><a href="https://huggingface.co/RuneXX/Minimax-H3-Workflows/discussions/2" target="_blank" rel="noopener">HF: RuneXX V2V Extend 讨论</a></li>
+        <li><a href="https://www.youtube.com/watch?v=OS31rr2QfkU" target="_blank" rel="noopener">YouTube: Multi-Keyframes & Long Videos</a></li>
+        <li><a href="https://www.bilibili.com/video/BV1miYM6xERf/" target="_blank" rel="noopener">Bilibili: 无限时长 V4</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>免责声明：</strong>本页为社区公开信息的非官方调研汇总，不代表 MiniMax、Comfy、各仓库作者立场。链接与节点行为可能随时间失效；商用请自行核对 MiniMax / Comfy 许可与各地区社区许可条款。</p>
+    <p>调研与页面生成日期：<strong>2026-10-23（Asia/Taipei，UTC+8）</strong>。可播放 demo 仅嵌入调研时 HTTP 可访问的公开 URL；无直链处已明确标注。</p>
+    <p class="small">本地预览：在项目目录执行 <code>python -m http.server 8765</code>，浏览器打开 <code>http://127.0.0.1:8765/</code>。</p>
+  </footer>
+</div>
+</body>
+</html>
