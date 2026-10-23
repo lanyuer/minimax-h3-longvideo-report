@@ -549,15 +549,15 @@
     <ul class="notes-list">
       <li>
         <span class="role">客户端</span>
-        <p><strong>Storyboard</strong> 在产品里就是时间轴 + 分段任务态（可重跑单段、预览拼接），比单次长请求更贴近真实 UX。交接协议应当成<strong>对外 API 契约</strong>：overlap 帧数、latent vs 像素、音频时间坐标——前端才能做进度、取消与失败重试。Avatar 云拼（约 3 分钟口播）客户端最轻，适合先做口播路径。</p>
+        <p>续写要分清「像素末帧」和「latent + overlap」两种契约，别混成同一种状态；Storyboard 进度模型按 <strong>5–10s</strong> 段、可重跑单段 + 预览拼接；Avatar 云拼可先做口播。调研阶段不排前端实现。</p>
       </li>
       <li>
         <span class="role">后端</span>
-        <p>生产上别做成「一次超长 forward」，应做成 <strong>5–15s chunk 队列 + 段间状态机</strong>：下一段只吃上一段 AV latent 尾窗（Masked AV / Motion Context），音频用时间坐标续写，最后再 stitch；像素末帧 I2V 链当兜底。若以后接服务，形态建议 <code>create_job(storyboard)</code> → <code>extend(segment_id, overlap_latent, audio_t)</code> → <code>stitch</code>。显存侧可记 pruned int8 / 低分长渲再放大；Turbo 类蒸馏长链慎用（详见 <a href="#acceleration">加速手段</a>）。CI 与批测脚本<strong>本期不做</strong>。</p>
+        <p>生产形态建议 5–15s chunk 队列 + 段间 AV latent 交接（Masked AV / Motion Context），像素末帧链仅兜底；调研阶段不建服务骨架，本机不跑模。</p>
       </li>
       <li>
         <span class="role">数据</span>
-        <p>公开集多为短片段，几乎没有带 overlap 的接缝标注。若将来要量化「音画接缝 / 身份漂移」，需自建按 overlap（如 22 / 39 帧）切好的测试集。指标可含：音频互相关（接缝前后窗口，社区目标约 ≥0.95）、Laplacian 方差衰减、可选 PSNR / 身份 embedding 距离——<strong>本期只留方案，不落地</strong>。</p>
+        <p>公开长视频集缺接缝标注；若日后评测，指标建议音频互相关、Laplacian 衰减、可选身份距离；当前调研阶段不建脚本、不挂 CI。</p>
       </li>
     </ul>
   </section>
