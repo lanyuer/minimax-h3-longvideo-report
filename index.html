@@ -471,6 +471,7 @@
         <a href="#audio">音频/Avatar</a>
         <a href="#upscale">低分+放大</a>
         <a href="#models">模型基建</a>
+        <a href="#acceleration">加速手段</a>
         <a href="#matrix">对照表</a>
         <a href="#blind">盲区</a>
         <a href="#sources">来源</a>
@@ -492,6 +493,7 @@
         <li><a href="#audio">7. 音频驱动 / Talking Avatar</a></li>
         <li><a href="#upscale">8. 低分长渲 + 放大拼接</a></li>
         <li><a href="#models">9. 模型与量化基建</a></li>
+        <li><a href="#acceleration">加速手段（推理 / 蒸馏 / 缓存 / 显存）</a></li>
         <li><a href="#matrix">方案对照表</a></li>
         <li><a href="#blind">搜索盲区</a></li>
         <li><a href="#sources">来源索引</a></li>
@@ -511,7 +513,7 @@
     <div class="meta">
       <span>调研日期：<strong>2026-10-23（Asia/Taipei）</strong></span>
       <span>别名：MiniMax-Hailuo / Hailuo H3 / Minimax H3</span>
-      <span>焦点：连续镜头、分段拼接、音视频同步延长</span>
+      <span>焦点：连续镜头、分段拼接、音视频同步延长；含加速手段章节</span>
     </div>
   </header>
 
@@ -534,7 +536,7 @@
       <li><strong>潜空间续写 &gt; 像素往返</strong>：VAE encode/decode 一轮即可让 Laplacian 方差近似腰斩（同帖实测）；Motion Context / Masked AV 直接钉 latent。</li>
       <li><strong>音频是第二战场</strong>：仅靠画面衔接会出现「翻唱感」接缝；需把音频时间坐标钉到新片段时间线，或做 de-click / 帧网格对齐（17k+5）。</li>
       <li><strong>FL2VA 尾帧常冻结</strong>：Infinite Continuation Suite 专门做 Auto Handover，切掉不稳定 landing tail 再交接。</li>
-      <li><strong>Turbo / 过蒸馏 LoRA 对长链更脆</strong>：HF 讨论与官方文档均提示续接更易「烧片」；长片不少人关掉 turbo，改 Spectrum / Sage / Kitchen。</li>
+      <li><strong>Turbo / 过蒸馏 LoRA 对长链更脆</strong>：HF 讨论与官方文档均提示续接更易「烧片」；长片不少人关掉 turbo，改 Spectrum / Sage / Kitchen。硬数字与配置见 <a href="#acceleration">加速手段</a>。</li>
       <li><strong>Ref 模式与首尾帧锚定互斥</strong>（Hailuo/官方参考用法讨论）：延长时要在「锚帧」与「视频参考槽」之间二选一。</li>
     </ul>
   </section>
@@ -551,7 +553,7 @@
       </li>
       <li>
         <span class="role">后端</span>
-        <p>生产上别做成「一次超长 forward」，应做成 <strong>5–15s chunk 队列 + 段间状态机</strong>：下一段只吃上一段 AV latent 尾窗（Masked AV / Motion Context），音频用时间坐标续写，最后再 stitch；像素末帧 I2V 链当兜底。若以后接服务，形态建议 <code>create_job(storyboard)</code> → <code>extend(segment_id, overlap_latent, audio_t)</code> → <code>stitch</code>。显存侧可记 pruned int8 / 低分长渲再放大；Turbo 类蒸馏长链慎用。CI 与批测脚本<strong>本期不做</strong>。</p>
+        <p>生产上别做成「一次超长 forward」，应做成 <strong>5–15s chunk 队列 + 段间状态机</strong>：下一段只吃上一段 AV latent 尾窗（Masked AV / Motion Context），音频用时间坐标续写，最后再 stitch；像素末帧 I2V 链当兜底。若以后接服务，形态建议 <code>create_job(storyboard)</code> → <code>extend(segment_id, overlap_latent, audio_t)</code> → <code>stitch</code>。显存侧可记 pruned int8 / 低分长渲再放大；Turbo 类蒸馏长链慎用（详见 <a href="#acceleration">加速手段</a>）。CI 与批测脚本<strong>本期不做</strong>。</p>
       </li>
       <li>
         <span class="role">数据</span>
@@ -954,8 +956,225 @@
       <li><strong>WAS pruned/quantized Singularity</strong>：
         <a href="https://huggingface.co/WAS/Minimax-h3_Singularity_v2_pruned" target="_blank" rel="noopener">WAS/Minimax-h3_Singularity_v2_pruned</a>
         ——adaLN curve prune + int8/w6a8/w4a8，降低长链迭代的显存压力（剪枝误差与 PSNR 见该卡；属工程权衡非画质增益承诺）。</li>
-      <li><strong>Turbo / Anti-Burn / Spectrum</strong>：速度与长链稳定性互相拉扯；长连续镜头多数经验是少用强蒸馏。</li>
+      <li><strong>Turbo / Anti-Burn / Spectrum</strong>：速度与长链稳定性互相拉扯；长连续镜头多数经验是少用强蒸馏。展开见 <a href="#acceleration">加速手段</a>。</li>
     </ul>
+  </section>
+
+  <section class="card" id="acceleration">
+    <h2>加速手段（社区公开配置与数字）</h2>
+    <div class="chips">
+      <span class="chip">推理内核</span>
+      <span class="chip">少步 / Turbo</span>
+      <span class="chip">缓存跳步</span>
+      <span class="chip">显存量化</span>
+      <span class="chip">多 GPU</span>
+    </div>
+    <p>
+      与上文「长视频交接」同一批渠道的补充调研：Reddit、GitHub、Hugging Face、Bilibili / 知乎类中文帖、ComfyUI 节点文档。
+      原则：只写能核对到出处的配置与数字；无公开硬数字标「未找到」。
+      加速与长链稳定性常冲突——尤其 Turbo / 过激缓存。
+    </p>
+    <div class="callout">
+      <strong>可叠加 vs 互斥（社区反复踩坑）：</strong>
+      注意力后端（Sage / Sol / Kitchen）一般可与 prune/quant 叠用；
+      <strong>Spectrum 与 EasyCache/LazyCache 不能同支路</strong>（Spectrum 检测到缓存会自禁用）；
+      EasyCache 与 Turbo 跳步也常冲突；缓存类节点（TeaCache / EasyCache / FirstBlockCache / TE-Speed）社区建议<strong>只开一个</strong>。
+    </div>
+
+    <h3>路线总表</h3>
+    <div class="table-wrap" role="region" aria-label="加速路线总表" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>类别</th><th>社区做法</th><th>公开硬数字（摘录）</th><th>质量代价 / 备注</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>注意力内核</td>
+          <td>SageAttention、Sol-Attn、Comfy Kitchen（ck-attn）</td>
+          <td>HF：Sol 补丁约 15–20%；Kitchen 在 5090 上对 H3 约 0%（16.17s vs 16.17s / 48.3s vs 48.3s）</td>
+          <td>Sol 常称接近无损；Sage 吃显存，≤12GB 可能因 offload 变慢；50 系收益常不明显</td>
+        </tr>
+        <tr>
+          <td>采样步数 / 调度</td>
+          <td>base ~20 步；res_multistep 或 euler+simple；cfg=1；σ shift 视频12/音频3</td>
+          <td>社区：&lt;12 步音频易爆；20 为常用底线；官方讨论区亦有人提 30–50 步品质上限</td>
+          <td>少步主要靠 Turbo 蒸馏，不是单纯砍步</td>
+        </tr>
+        <tr>
+          <td>特征缓存 / 跳步</td>
+          <td>FirstBlockCache、EasyCache、TeaCache、Spectrum（谱预测）</td>
+          <td>FirstBlockCache warm：Safe 1.25× / Fast 1.44× / Aggressive 1.55×；Spectrum degree1 ≈45% 采样器降时（1.83×）</td>
+          <td>轨迹会偏；EasyCache 已知伤 H3 音频；Spectrum 需较高步数才「香」；勿与另一缓存叠</td>
+        </tr>
+        <tr>
+          <td>投机解码</td>
+          <td>—</td>
+          <td><strong>未找到</strong>面向 MiniMax H3 的公开投机解码实现或数字</td>
+          <td>社区加速主轴是缓存预测 / 蒸馏 / 内核，不是 LLM 式 speculative decode</td>
+        </tr>
+        <tr>
+          <td>蒸馏 / Turbo LoRA</td>
+          <td>lightx2v 4/8-step；larryvrh v4 step600 EMA；ModelTC / 官方仓库收录</td>
+          <td>4070 12GB：baseline 20步 272.97s → LightX2V 4步 <strong>79.36s（3.44×）</strong>，峰值显存 ~10.6 GiB</td>
+          <td>音频/快速运动易糊；长链更易烧脸——见 Anti-Burn；长片共识多为草稿用、成片关</td>
+        </tr>
+        <tr>
+          <td>并行</td>
+          <td>注意力头分片（AesSedai Parallel）；另有 MultiStream / 社区 multi-GPU 实验</td>
+          <td>4× RTX PRO 6000：denoiser 2.02×、端到端 1.39×（4步 Ref2VA）；纯 attention 合成 2.71×</td>
+          <td>需 peer access + Kitchen INT8；条件编码/VAE 仍单卡，端到端缩放受限</td>
+        </tr>
+        <tr>
+          <td>显存 / 量化 / prune</td>
+          <td>Comfy pruned int8；WAS Singularity prune+int8/w6a8/w4a8；int8 VAE；低分长渲再放大</td>
+          <td>WAS：21 / 16 / 11.8 GB；PSNR 29.1 / 26.2 / 21.4 dB（相对源 int8）；4090 栈 int8 VAE 为最大单项省时</td>
+          <td>torch.compile 有 24GB OOM 报告；FP8 采样未必更快；音频 VAE 宜 fp32</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>1. 推理加速（注意力与编译）</h3>
+    <ul>
+      <li><strong>SageAttention</strong>：最广的「近免费」讨论项；中文低显存教程常报约 +11%，并强调版本锁定（有帖称 2.2.0 与 H3 冲突、锁 1.0.6——以本机实测为准）。≤12GB 上可能因 VRAM 占用触发更多 offload 而变慢。</li>
+      <li><strong>Sol-Attn</strong>：性能指南与 HF 讨论视为推荐；有用户称补丁约 15–20%；评测站称可验证接近 bit-identical（相对 Spectrum 的有损）。B 站有 Sol Attn V2 / 与 Sage 联用讲解（如 <a href="https://www.bilibili.com/video/BV1kkbC6eEgF/" target="_blank" rel="noopener">BV1kkbC6eEgF</a>）。</li>
+      <li><strong>Comfy Kitchen attention</strong>：部分 40 系反馈优于 Sage；<a href="https://huggingface.co/Comfy-Org/MiniMax-H3/discussions/26" target="_blank" rel="noopener">HF #26</a> 在 5090 上交替测 4步 Turbo 与 20 步，Kitchen vs 默认几乎无差。</li>
+      <li><strong>torch.compile</strong>：同帖 4090 栈报告 OOM；Parallel 节点作者测 4 步 Ref2VA 稳态仅约 +1.5% 且轨迹偏离——不作为默认杠杆。</li>
+    </ul>
+
+    <h3>2. 采样步数与调度</h3>
+    <ul>
+      <li>实务甜点：<strong>20 步 base</strong>（品质） / <strong>8 步 Turbo</strong>（平衡） / <strong>4 步 LightX2V</strong>（最快）。</li>
+      <li>采样器：eval 网格多用 <code>res_multistep</code>；12GB 指南常用 <code>euler + simple</code>；cfg 多为 <strong>1.0</strong>。</li>
+      <li>Sigma shift：视频 <strong>12</strong> / 音频 <strong>3</strong>（默认）；音频 6 可抬响度但易对轻声过热（turbo-eval 网格）。</li>
+    </ul>
+    <p class="small muted">主参考：<a href="https://github.com/wildminder/awesome-minimax-H3/blob/main/guides/minimax-h3-performance.md" target="_blank" rel="noopener">awesome-minimax-H3 performance 指南</a> ·
+      <a href="https://jo-nike.github.io/h3-turbo-eval/" target="_blank" rel="noopener">h3-turbo-eval 25 配置网格</a></p>
+
+    <h3>3. KV / 特征缓存类跳步</h3>
+    <div class="table-wrap" role="region" aria-label="缓存类加速数字" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>方案</th><th>设定 / 出处</th><th>数字</th><th>质量侧写</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>FirstBlockCache</td>
+          <td>960×544、5s、20 步、pruned int8、Sage 2.2；warm 相对 warm 无缓存</td>
+          <td>Safe 20.0% / Fast 30.5% / Aggressive 35.7% 降时（1.25–1.55×）</td>
+          <td>相对无缓存帧：Safe SSIM 0.82 / Fast 0.69 / Aggressive 0.62（轨迹距离，非观感判死刑）</td>
+        </tr>
+        <tr>
+          <td>Spectrum H3</td>
+          <td>v0.1.8 degree=1；PRO 6000；~0.8MP 7s 20 步 Euler</td>
+          <td>采样器 324.98s → 177.80s（−45.3%，1.83×）；历史约 +3.2 GiB VRAM</td>
+          <td>有损预测；与 EasyCache 互斥；旧共识「要 30–50 步才香」，degree1 后作者称 H3 适配更好</td>
+        </tr>
+        <tr>
+          <td>EasyCache</td>
+          <td>社区默认 reuse≈0.2；HF/Reddit 对比 Spectrum</td>
+          <td>长帧数场景有用户报约 25% 优于 Spectrum 的 ~15%（非统一 bench）</td>
+          <td><a href="https://github.com/Comfy-Org/ComfyUI/issues/15326" target="_blank" rel="noopener">#15326</a>：按视频决策缓存却复用到音频，钢琴等 RMS/频谱明显劣化；与 Turbo 跳步不宜叠</td>
+        </tr>
+        <tr>
+          <td>TeaCache（中文圈）</td>
+          <td>知乎/教程：8GB 笔记本 + cu130 + TeaCache + Sage</td>
+          <td>作者侧常引 306s→102s；帖主 832×480 称 6min→2.5min（整栈，非单因子）</td>
+          <td>248/260 帧开缓存可致声音异常；长带声建议关缓存或短段</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="small muted">FirstBlockCache：<a href="https://github.com/duckyshell/ComfyUI-MiniMaxH3-FirstBlockCache/blob/main/benchmark/BENCHMARK.md" target="_blank" rel="noopener">BENCHMARK.md</a> ·
+      Spectrum：<a href="https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3" target="_blank" rel="noopener">xmarre/ComfyUI-Spectrum-MiniMax-H3</a> ·
+      Reddit degree1：<a href="https://www.reddit.com/r/StableDiffusion/comments/1vhuorq/45_lower_minimax_h3_sampler_time_with_new/" target="_blank" rel="noopener">1vhuorq</a></p>
+
+    <h3>4. 投机解码</h3>
+    <div class="box note"><h4>结论</h4>
+      <p>在 Reddit / GitHub / HF / 中文社区关键词检索范围内，<strong>未找到</strong>针对 MiniMax H3 DiT 的公开 speculative decoding 实现、PoC 或 benchmark。加速叙事集中在「缓存预测（Spectrum/TeaCache 等）+ Turbo 蒸馏 + 注意力内核 + 量化」。</p>
+    </div>
+
+    <h3>5. 蒸馏 / Turbo LoRA / Anti-Burn</h3>
+    <ul>
+      <li><strong>LightX2V 4-step</strong>（sepiablue-ai 4070 12GB bench）：576×832、124 帧；无 LoRA 20 步 272.97s → 4 步 79.36s（<strong>3.44×</strong>），峰值 VRAM ≈10.6 GiB。</li>
+      <li><strong>larryvrh v4 step600 EMA</strong>：同表 8 步约 2.09×；turbo-eval 网格覆盖 EMA/非 EMA、strength 0.75/1.0、音频 shift 3 vs 6。</li>
+      <li><strong>质量共识</strong>：安静人声/口音/硬切在 4 步蒸馏下更脆；长链「烧脸」明显。社区两段式：草稿 Turbo（或 EasyCache）→ 成片关蒸馏、20+ 步。</li>
+      <li><strong>Anti-Burn LoRA</strong>（非加速，而是蒸馏长链的质量补丁）：仅挂在续写 clip≥2；strength 常从 0.5 试；未见模型上 face burn +61%→+4%（0.6）。出处
+        <a href="https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA" target="_blank" rel="noopener">Imagineer13/H3-Anti-Burn-LoRA</a>。</li>
+    </ul>
+    <p class="small muted">
+      <a href="https://github.com/sepiablue-ai/minimax-h3-turbo-lora-benchmark" target="_blank" rel="noopener">turbo-lora-benchmark</a> ·
+      <a href="https://jo-nike.github.io/h3-turbo-eval/" target="_blank" rel="noopener">turbo-eval</a> ·
+      <a href="https://huggingface.co/lightx2v/Minimax-h3-Turbo" target="_blank" rel="noopener">lightx2v Turbo</a>
+    </p>
+
+    <h3>6. 并行策略</h3>
+    <ul>
+      <li><strong>AesSedai/ComfyUI-MiniMaxH3-Parallel</strong>：只分片 attention 激活（权重仍单卡）；需 <code>--use-ck-attention</code>、2–4 卡 peer。4 卡 denoiser <strong>2.02×</strong>、端到端 <strong>1.39×</strong>；输出 SHA-256 与单卡一致。</li>
+      <li>另有 MultiStream / 社区 multi-GPU、Ulysses 序列并行实验仓；公开可复现数字以 Parallel README 表最完整。</li>
+      <li>官方全量 bf16 多卡示例属服务端/框架文档范畴；消费级 Comfy 仍以单卡 + 量化为主。</li>
+    </ul>
+    <p class="small muted"><a href="https://github.com/AesSedai/ComfyUI-MiniMaxH3-Parallel" target="_blank" rel="noopener">ComfyUI-MiniMaxH3-Parallel</a></p>
+
+    <h3>7. 显存优化（prune / 量化 / offload / VAE）</h3>
+    <div class="table-wrap" role="region" aria-label="显存优化数字" tabindex="0">
+    <table>
+      <thead>
+        <tr><th>手段</th><th>配置要点</th><th>数字</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>WAS Singularity v2 prune+quant</td>
+          <td>adaLN→8 维 curve；Load Diffusion Model 默认 dtype</td>
+          <td>磁盘 21.0 / 16.0 / 11.8 GB；调制误差 ≤0.025%；PSNR 29.1 / 26.2 / 21.4 dB（vs 源 int8；同设定下 Comfy 内存态抖动对照 24.7 dB）</td>
+        </tr>
+        <tr>
+          <td>Comfy-Org pruned int8_convrot</td>
+          <td>默认消费级底座 + NVFP4/AWQ 文本编码器</td>
+          <td>文件约 21GB 量级；12GB 卡依赖系统 RAM offload（64GB RAM 常被强调）</td>
+        </tr>
+        <tr>
+          <td>int8 video VAE + 低分/放大</td>
+          <td>4090 ref2va 栈（HF #26）</td>
+          <td>基线 174s → int8 VAE 147s（单项最大）；再 TeaCache+Kitchen 等可到 ~126–119s（−28%～−32% 整栈）</td>
+        </tr>
+        <tr>
+          <td>低分草稿</td>
+          <td>0.2–0.4 MP 出时长 → 再放大（呼应本站「低分长渲」章）</td>
+          <td>DGX Spark 半分辨率 + 2× RealESRGAN 有社区报约 6× 墙钟加速（相对直出目标分辨率）</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="small muted">
+      <a href="https://huggingface.co/WAS/Minimax-h3_Singularity_v2_pruned" target="_blank" rel="noopener">WAS pruned</a> ·
+      <a href="https://huggingface.co/Comfy-Org/MiniMax-H3" target="_blank" rel="noopener">Comfy-Org/MiniMax-H3</a> ·
+      <a href="https://huggingface.co/Comfy-Org/MiniMax-H3/discussions/26" target="_blank" rel="noopener">HF discussion #26</a>
+    </p>
+
+    <h3>Top 可复现配置（3 条）</h3>
+    <div class="top3">
+      <div class="item">
+        <strong>A. 品质优先 · 24GB 级</strong>
+        <p class="muted small">pruned int8_convrot + NVFP4 文本编码器 + Sol-Attn（或 Kitchen）+ <strong>20 步</strong>、cfg 1、shift 12/3；长链<strong>关 Turbo</strong>，续写可挂 Anti-Burn。可选 FirstBlockCache Safe。</p>
+      </div>
+      <div class="item">
+        <strong>B. 速度优先 · Turbo 草稿</strong>
+        <p class="muted small">同底座 + LightX2V <strong>4 步</strong>（strength 0.75–1.0）+ res_multistep；测得约 <strong>3.44×</strong>（4070 12GB）。成片同 seed 关 Turbo 重跑。勿叠 EasyCache。</p>
+      </div>
+      <div class="item">
+        <strong>C. 低显存 · 8–12GB</strong>
+        <p class="muted small">pruned int8 + NVFP4 + <code>--lowvram</code> + 充足系统 RAM；注意力优先 Sol，慎 Sage；缓存只开 TeaCache <em>或</em> EasyCache 之一；分辨率 0.2–0.5 MP 草稿。Torch 走 cu130 / Kitchen 硬件反量化往往是最大单项（社区经验，整栈非单因子）。</p>
+      </div>
+    </div>
+
+    <div class="box good"><h4>与长视频章节的交叉结论</h4>
+      <ul>
+        <li>加速省的是<strong>单段墙钟</strong>；接缝质量仍取决于 latent 交接（Masked AV / Motion Context），不是 Turbo。</li>
+        <li>团队备注已写：pruned int8 / 低分长渲；Turbo 长链慎用——本节给出对应出处与倍数。</li>
+        <li>本期仍<strong>本机不跑模</strong>；上表供选型，不代替你方真机回归。</li>
+      </ul>
+    </div>
   </section>
 
   <section class="card" id="matrix">
@@ -1052,6 +1271,7 @@
       <li><strong>Civitai</strong>：有延长/放大讨论与样例，直链与地区策略不稳定，未强行嵌入。</li>
       <li><strong>官方托管 Hailuo App「Extend」</strong>：与本地开放权重行为不完全相同；社区评论来自文档转述与用户经验，缺乏统一公开长片样本库。</li>
       <li><strong>量化结论时效</strong>：节点与 ComfyUI nightly 迭代极快（2026-08 前后密集发布）；部署前请核对 README 的 Comfy 版本/PR 要求。</li>
+      <li><strong>加速数字不可直接横比</strong>：不同帖的分辨率、步数、冷/热启动、是否含 VAE/文本编码差异很大；本节尽量标注设定，禁止把「整栈 6min→2.5min」写成单一插件倍率。</li>
     </ul>
   </section>
 
@@ -1090,6 +1310,20 @@
         <li><a href="https://huggingface.co/RuneXX/Minimax-H3-Workflows/discussions/2" target="_blank" rel="noopener">HF: RuneXX V2V Extend 讨论</a></li>
         <li><a href="https://www.youtube.com/watch?v=OS31rr2QfkU" target="_blank" rel="noopener">YouTube: Multi-Keyframes & Long Videos</a></li>
         <li><a href="https://www.bilibili.com/video/BV1miYM6xERf/" target="_blank" rel="noopener">Bilibili: 无限时长 V4</a></li>
+        <li><a href="https://www.bilibili.com/video/BV1kkbC6eEgF/" target="_blank" rel="noopener">Bilibili: Sol Attn V2 / H3 加速互补</a></li>
+      </ul>
+      <h3>加速手段（本章新增）</h3>
+      <ul>
+        <li><a href="https://github.com/wildminder/awesome-minimax-H3/blob/main/guides/minimax-h3-performance.md" target="_blank" rel="noopener">awesome-minimax-H3 · performance 指南</a></li>
+        <li><a href="https://jo-nike.github.io/h3-turbo-eval/" target="_blank" rel="noopener">MiniMax H3 Turbo LoRA 对比网格</a></li>
+        <li><a href="https://github.com/sepiablue-ai/minimax-h3-turbo-lora-benchmark" target="_blank" rel="noopener">minimax-h3-turbo-lora-benchmark</a></li>
+        <li><a href="https://github.com/duckyshell/ComfyUI-MiniMaxH3-FirstBlockCache/blob/main/benchmark/BENCHMARK.md" target="_blank" rel="noopener">FirstBlockCache BENCHMARK</a></li>
+        <li><a href="https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3" target="_blank" rel="noopener">ComfyUI-Spectrum-MiniMax-H3</a></li>
+        <li><a href="https://github.com/AesSedai/ComfyUI-MiniMaxH3-Parallel" target="_blank" rel="noopener">ComfyUI-MiniMaxH3-Parallel</a></li>
+        <li><a href="https://huggingface.co/WAS/Minimax-h3_Singularity_v2_pruned" target="_blank" rel="noopener">WAS Singularity pruned/quant</a></li>
+        <li><a href="https://huggingface.co/Imagineer13/H3-Anti-Burn-LoRA" target="_blank" rel="noopener">H3 Anti-Burn LoRA</a></li>
+        <li><a href="https://huggingface.co/Comfy-Org/MiniMax-H3/discussions/26" target="_blank" rel="noopener">HF Comfy-Org/MiniMax-H3 #26 benchmarks</a></li>
+        <li><a href="https://github.com/Comfy-Org/ComfyUI/issues/15326" target="_blank" rel="noopener">ComfyUI #15326 EasyCache 音频劣化</a></li>
       </ul>
     </div>
   </section>
@@ -1098,7 +1332,7 @@
     <p><strong>免责声明：</strong>本页为社区公开信息的非官方调研汇总，不代表 MiniMax、Comfy、各仓库作者立场。链接与节点行为可能随时间失效；商用请自行核对 MiniMax / Comfy 许可与各地区社区许可条款。</p>
     <p>公开页：<a href="https://lanyuer.github.io/minimax-h3-longvideo-report/">https://lanyuer.github.io/minimax-h3-longvideo-report/</a><br />
        仓库：<a href="https://github.com/lanyuer/minimax-h3-longvideo-report">lanyuer/minimax-h3-longvideo-report</a></p>
-    <p>调研与页面修订：<strong>2026-10-23（Asia/Taipei，UTC+8）</strong>。可播放 demo 仅嵌入调研时 HTTP 可访问的公开 URL；无直链处已明确标注。</p>
+    <p>调研与页面修订：<strong>2026-10-23（Asia/Taipei，UTC+8）</strong>；同日更新含<strong>加速手段</strong>章节。可播放 demo 仅嵌入调研时 HTTP 可访问的公开 URL；无直链处已明确标注。</p>
     <p class="small">本地预览：在项目目录执行 <code>python -m http.server 8765</code>，浏览器打开 <code>http://127.0.0.1:8765/</code>。</p>
   </footer>
 </div>
