@@ -4,7 +4,7 @@
 
 ## 内容
 
-- `index.html`：完整报告（分类导航、团队收口备注、方案说明、优缺点、共识、可播放 demo、来源）
+- `index.html`：完整报告（分类导航、团队收口备注、长视频方案、**加速手段**、优缺点、共识、可播放 demo、来源）
 - `assets/`：预留目录（本版优先外链嵌入公开 mp4，不打包版权不明大视频）
 
 ## 本地预览
@@ -26,7 +26,7 @@ python -m http.server 8765
 ## 调研说明
 
 - 日期：2026-10-23（Asia/Taipei）
-- 范围：Reddit、GitHub、Hugging Face、Bilibili、YouTube、Pruna API 文档等
+- 范围：Reddit、GitHub、Hugging Face、Bilibili、YouTube、Pruna API 文档等；含加速手段（Turbo/Sage/Spectrum/缓存/量化/多 GPU）
 - 原则：不伪造视频链接或评测数字；无公开直链处标注来源页与限制
 - 阶段：调研收口；本机不跑模、不落地实现
 
