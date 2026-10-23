@@ -2,224 +2,507 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>MiniMax H3 连续/长视频社区方案调研报告</title>
 <meta name="description" content="MiniMax H3（Hailuo H3）本地 ComfyUI 与社区 API 在连续视频、长视频制作上的方案分类、效果与共识汇总（非官方）。" />
+<meta name="theme-color" content="#faf9f5" />
 <style>
   :root {
-    --bg: #0b0f14;
-    --panel: #121821;
-    --panel2: #182130;
-    --border: #273246;
-    --text: #e7eef8;
-    --muted: #9aabbf;
-    --accent: #5bb8ff;
-    --accent2: #7dffa8;
-    --warn: #ffc857;
-    --danger: #ff7b7b;
-    --chip: #1e2a3b;
-    --shadow: 0 10px 40px rgba(0,0,0,.35);
-    --radius: 14px;
-    --max: 1080px;
+    --bg: #faf9f5;
+    --bg-soft: #f5f4ef;
+    --surface: #ffffff;
+    --surface-2: #f0eee6;
+    --border: #e8e6dc;
+    --border-strong: #d9d6c8;
+    --text: #1a1915;
+    --text-2: #3d3b34;
+    --muted: #6b6860;
+    --accent: #c96442;
+    --accent-soft: #f4e6df;
+    --accent-ink: #9a4a2e;
+    --good: #3d6b4f;
+    --good-bg: #eaf3ee;
+    --bad: #a33b3b;
+    --bad-bg: #f8ecec;
+    --note: #8a6a2f;
+    --note-bg: #f7f1e3;
+    --chip: #f0eee6;
+    --radius: 12px;
+    --radius-lg: 16px;
+    --max: 42rem;
+    --nav-h: 56px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+    --font: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
-    font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
-    background:
-      radial-gradient(1200px 600px at 10% -10%, #16324f 0%, transparent 55%),
-      radial-gradient(900px 500px at 100% 0%, #1a3a2a 0%, transparent 45%),
-      var(--bg);
+    font-family: var(--font);
+    font-size: 16.5px;
+    line-height: 1.7;
     color: var(--text);
-    line-height: 1.65;
+    background: var(--bg);
+    padding-top: var(--safe-t);
+    padding-bottom: var(--safe-b);
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .wrap { max-width: var(--max); margin: 0 auto; padding: 24px 18px 80px; }
-  header.hero {
-    background: linear-gradient(180deg, rgba(24,33,48,.95), rgba(18,24,33,.92));
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:hover { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  img, video, iframe { max-width: 100%; }
+  h1, h2, h3, h4 { color: var(--text); line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(1.65rem, 4.5vw, 2.15rem); margin: 0 0 0.75rem; font-weight: 650; }
+  h2 { font-size: clamp(1.25rem, 3vw, 1.45rem); margin: 0 0 0.85rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.05rem; margin: 1.4rem 0 0.55rem; color: var(--text-2); }
+  h4 { font-size: 0.95rem; margin: 0 0 0.4rem; }
+  p { margin: 0 0 0.9rem; color: var(--text-2); }
+  ul, ol { margin: 0.4rem 0 0.9rem; padding-left: 1.25rem; color: var(--text-2); }
+  li { margin: 0.35rem 0; }
+  strong { color: var(--text); font-weight: 600; }
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px 26px;
-    box-shadow: var(--shadow);
-    margin-bottom: 22px;
+    border-radius: 5px;
+    padding: 0.1em 0.4em;
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  /* Top bar */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(250, 249, 245, 0.92);
+    backdrop-filter: saturate(1.2) blur(10px);
+    -webkit-backdrop-filter: saturate(1.2) blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding-top: var(--safe-t);
+  }
+  .topbar-inner {
+    max-width: calc(var(--max) + 3rem);
+    margin: 0 auto;
+    padding: 0 1rem;
+    min-height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .brand {
+    flex: 0 0 auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .brand:hover { color: var(--accent); text-decoration: none; }
+  .brand span { color: var(--muted); font-weight: 500; }
+  .nav-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-toggle:hover { background: var(--bg-soft); }
+  .nav-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: #e2c4b5; color: var(--accent-ink); }
+
+  .toc-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .toc-panel.open { display: block; }
+  .toc-panel .label {
+    margin: 0;
+    padding: 0.75rem 1rem 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .toc-panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem 0.75rem 1rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .toc-panel a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  .toc-panel a:hover, .toc-panel a:focus-visible {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    text-decoration: none;
+  }
+
+  /* Horizontal chip nav for wider phones / tablets when panel closed */
+  .toc-scroll {
+    display: none;
+    gap: 0.4rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 0 0.65rem;
+    margin: 0 -0.25rem;
+  }
+  .toc-scroll::-webkit-scrollbar { display: none; }
+  .toc-scroll a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: var(--chip);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .toc-scroll a:hover { border-color: #e2c4b5; background: var(--accent-soft); color: var(--accent-ink); text-decoration: none; }
+
+  @media (min-width: 720px) {
+    .nav-toggle { display: none; }
+    .toc-panel { display: none !important; }
+    .toc-scroll { display: flex; flex: 1; min-width: 0; margin: 0; padding: 0.5rem 0; }
+    .brand { margin-right: 0.5rem; }
+  }
+
+  .wrap {
+    max-width: calc(var(--max) + 3rem);
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3.5rem;
+  }
+  @media (min-width: 640px) {
+    .wrap { padding: 1.75rem 1.5rem 4rem; }
+    body { font-size: 17px; }
+  }
+
+  .hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 640px) {
+    .hero { padding: 2rem 1.75rem; }
   }
   .badge {
     display: inline-block;
-    font-size: 12px;
-    letter-spacing: .04em;
-    color: var(--accent2);
-    background: rgba(125,255,168,.08);
-    border: 1px solid rgba(125,255,168,.25);
-    padding: 4px 10px;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    border: 1px solid #e8d0c4;
+    padding: 0.3rem 0.7rem;
     border-radius: 999px;
-    margin-bottom: 12px;
+    margin-bottom: 0.85rem;
   }
-  h1 { margin: 0 0 10px; font-size: clamp(1.55rem, 3vw, 2.1rem); line-height: 1.25; }
-  .lead { color: var(--muted); margin: 0 0 16px; font-size: 1.02rem; }
+  .lead { color: var(--muted); margin: 0 0 1rem; font-size: 1.02rem; }
   .meta {
-    display: flex; flex-wrap: wrap; gap: 8px 14px;
-    color: var(--muted); font-size: .92rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+    color: var(--muted);
+    font-size: 0.9rem;
   }
-  nav.toc {
-    position: sticky; top: 0; z-index: 20;
-    backdrop-filter: blur(10px);
-    background: rgba(11,15,20,.82);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px;
-    margin: 16px 0 28px;
-  }
-  nav.toc .label { font-size: .8rem; color: var(--muted); margin: 0 0 8px 4px; }
-  nav.toc ul {
-    list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px;
-  }
-  nav.toc a {
-    display: block;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: var(--chip);
-    color: var(--text);
-    font-size: .9rem;
-    border: 1px solid transparent;
-  }
-  nav.toc a:hover { border-color: var(--accent); text-decoration: none; }
+  .meta strong { color: var(--text-2); font-weight: 600; }
+
   section.card {
-    background: var(--panel);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px 20px;
-    margin: 0 0 22px;
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-lg);
+    padding: 1.35rem 1.15rem;
+    margin: 0 0 1.35rem;
   }
-  section.card h2 {
-    margin: 0 0 8px;
-    font-size: 1.35rem;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
+  @media (min-width: 640px) {
+    section.card { padding: 1.65rem 1.5rem; margin-bottom: 1.6rem; }
   }
-  section.card h3 { margin: 18px 0 8px; font-size: 1.08rem; color: #d7e6f8; }
+  section.card > p:last-child,
+  section.card > ul:last-child,
+  section.card > .grid2:last-child,
+  section.card > .box:last-child,
+  section.card > .sources:last-child { margin-bottom: 0; }
+
   .grid2 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 0.85rem 0;
   }
-  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+  @media (min-width: 640px) {
+    .grid2 { grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+  }
   .box {
-    background: var(--panel2);
+    background: var(--bg-soft);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
   }
-  .box.good h4 { color: var(--accent2); margin: 0 0 6px; }
-  .box.bad h4 { color: var(--danger); margin: 0 0 6px; }
-  .box.note h4 { color: var(--warn); margin: 0 0 6px; }
-  .box ul, .sources ul, .steps ol { margin: 6px 0 0; padding-left: 1.15rem; }
-  .box li, .sources li, .steps li { margin: 4px 0; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .box.good { background: var(--good-bg); border-color: #cfe0d5; }
+  .box.good h4 { color: var(--good); }
+  .box.bad { background: var(--bad-bg); border-color: #ebcfcf; }
+  .box.bad h4 { color: var(--bad); }
+  .box.note { background: var(--note-bg); border-color: #e8dcb8; }
+  .box.note h4 { color: var(--note); }
+  .box ul { margin: 0.35rem 0 0; }
+  .box p { margin: 0; color: var(--text-2); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.65rem 0 0.85rem; }
   .chip {
-    font-size: .78rem;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.78rem;
+    line-height: 1.3;
     background: var(--chip);
     border: 1px solid var(--border);
     color: var(--muted);
-    padding: 3px 8px;
+    padding: 0.28rem 0.65rem;
     border-radius: 999px;
   }
-  .chip.ok { color: var(--accent2); border-color: rgba(125,255,168,.35); }
-  .chip.warn { color: var(--warn); border-color: rgba(255,200,87,.35); }
+  .chip.ok { color: var(--good); background: var(--good-bg); border-color: #cfe0d5; }
+  .chip.warn { color: var(--note); background: var(--note-bg); border-color: #e8dcb8; }
+
   .media {
-    margin: 14px 0;
-    background: #06090e;
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    margin: 1rem 0;
+    background: #1a1915;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
     overflow: hidden;
   }
   .media video, .media iframe {
     display: block;
     width: 100%;
-    max-height: 520px;
-    background: #000;
     border: 0;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    background: #000;
   }
-  .media iframe { aspect-ratio: 16/9; max-height: none; }
   .caption {
-    padding: 10px 12px;
-    font-size: .88rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
     color: var(--muted);
+    background: var(--bg-soft);
     border-top: 1px solid var(--border);
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0.85rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
   }
   table {
     width: 100%;
+    min-width: 520px;
     border-collapse: collapse;
-    font-size: .92rem;
-    margin: 10px 0;
+    font-size: 0.9rem;
+    margin: 0;
   }
   th, td {
-    border: 1px solid var(--border);
-    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 0.65rem 0.75rem;
     text-align: left;
     vertical-align: top;
+    color: var(--text-2);
   }
-  th { background: var(--panel2); color: #cfe0f5; }
-  code, .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .86em;
-    background: #0a121c;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1px 5px;
+  th:last-child, td:last-child { border-right: 0; }
+  tr:last-child td { border-bottom: 0; }
+  th {
+    background: var(--bg-soft);
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
   }
+
+  /* stacked cards for matrix on very narrow screens */
+  .matrix-cards { display: none; }
+  @media (max-width: 560px) {
+    #matrix .table-wrap { display: none; }
+    .matrix-cards { display: grid; gap: 0.75rem; margin: 0.85rem 0; }
+    .matrix-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.9rem 1rem;
+    }
+    .matrix-card h4 { margin: 0 0 0.55rem; font-size: 1rem; color: var(--text); }
+    .matrix-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.75rem; font-size: 0.9rem; }
+    .matrix-card dt { color: var(--muted); }
+    .matrix-card dd { margin: 0; color: var(--text-2); }
+  }
+
   .callout {
     border-left: 3px solid var(--accent);
-    background: rgba(91,184,255,.06);
-    padding: 10px 12px;
+    background: var(--accent-soft);
+    padding: 0.85rem 1rem;
     border-radius: 0 10px 10px 0;
-    margin: 12px 0;
-    color: var(--muted);
+    margin: 1rem 0;
+    color: var(--text-2);
+    font-size: 0.95rem;
   }
   .callout strong { color: var(--text); }
-  footer {
-    margin-top: 28px;
-    padding: 18px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    color: var(--muted);
-    font-size: .9rem;
-    background: rgba(18,24,33,.7);
-  }
-  .top3 { counter-reset: top; }
+
+  .top3 { counter-reset: top; display: grid; gap: 0.75rem; }
   .top3 .item {
     position: relative;
-    padding-left: 48px;
-    margin: 12px 0;
-    background: var(--panel2);
+    background: var(--bg-soft);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 14px 14px 56px;
+    border-radius: var(--radius);
+    padding: 1rem 1rem 1rem 3.35rem;
   }
   .top3 .item::before {
     counter-increment: top;
     content: counter(top);
     position: absolute;
-    left: 14px; top: 14px;
-    width: 30px; height: 30px;
+    left: 0.9rem;
+    top: 1rem;
+    width: 1.85rem;
+    height: 1.85rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, #3d8fd6, #2f6b4f);
-    display: grid; place-items: center;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border: 1px solid #e2c4b5;
+    display: grid;
+    place-items: center;
     font-weight: 700;
+    font-size: 0.9rem;
   }
-  .sources { font-size: .92rem; }
+  .top3 .item > strong { display: block; margin-bottom: 0.35rem; color: var(--text); }
+  .top3 .item p { margin: 0 0 0.45rem; }
+  .top3 .item p:last-child { margin-bottom: 0; }
+
+  .notes-list { list-style: none; padding: 0; margin: 0.75rem 0 0; display: grid; gap: 0.75rem; }
+  .notes-list li {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .notes-list .role {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    border: 1px solid #e8d0c4;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    margin-bottom: 0.45rem;
+  }
+  .notes-list p { margin: 0; font-size: 0.95rem; }
+
+  .sources { font-size: 0.95rem; }
+  .sources h3 { margin-top: 1.1rem; }
+  .sources h3:first-child { margin-top: 0.5rem; }
   .muted { color: var(--muted); }
-  .small { font-size: .88rem; }
+  .small { font-size: 0.9rem; }
+
+  footer.site-footer {
+    margin-top: 0.5rem;
+    padding: 1.25rem 1.15rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-soft);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  footer.site-footer p { color: var(--muted); margin: 0 0 0.65rem; }
+  footer.site-footer p:last-child { margin-bottom: 0; }
+  footer.site-footer a { word-break: break-all; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top">H3 长视频<span> · 调研</span></a>
+      <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="tocPanel">目录</button>
+      <nav class="toc-scroll" aria-label="分类导航（横滑）">
+        <a href="#summary">总览</a>
+        <a href="#team-notes">团队备注</a>
+        <a href="#top3">Top 3</a>
+        <a href="#official">官方边界</a>
+        <a href="#masked-av">Masked AV</a>
+        <a href="#motion-context">Motion Context</a>
+        <a href="#fl2va">FL2VA</a>
+        <a href="#pixel-chain">末帧链</a>
+        <a href="#ref2va">Ref2VA</a>
+        <a href="#storyboard">Storyboard</a>
+        <a href="#audio">音频/Avatar</a>
+        <a href="#upscale">低分+放大</a>
+        <a href="#models">模型基建</a>
+        <a href="#matrix">对照表</a>
+        <a href="#blind">盲区</a>
+        <a href="#sources">来源</a>
+      </nav>
+    </div>
+    <nav class="toc-panel" id="tocPanel" aria-label="分类导航">
+      <p class="label">分类导航</p>
+      <ul>
+        <li><a href="#summary">总览与共识</a></li>
+        <li><a href="#team-notes">团队调研备注（收口）</a></li>
+        <li><a href="#top3">可信方案 Top 3</a></li>
+        <li><a href="#official">官方能力边界</a></li>
+        <li><a href="#masked-av">1. 原生 Masked AV / 潜空间续写</a></li>
+        <li><a href="#motion-context">2. Motion Context 运动·音频钉接</a></li>
+        <li><a href="#fl2va">3. FL2VA 首尾帧 + 质量重置</a></li>
+        <li><a href="#pixel-chain">4. 末帧当首帧（像素链路）</a></li>
+        <li><a href="#ref2va">5. Ref2VA / V2V 参考续写</a></li>
+        <li><a href="#storyboard">6. Storyboard / 导演台多段</a></li>
+        <li><a href="#audio">7. 音频驱动 / Talking Avatar</a></li>
+        <li><a href="#upscale">8. 低分长渲 + 放大拼接</a></li>
+        <li><a href="#models">9. 模型与量化基建</a></li>
+        <li><a href="#matrix">方案对照表</a></li>
+        <li><a href="#blind">搜索盲区</a></li>
+        <li><a href="#sources">来源索引</a></li>
+      </ul>
+    </nav>
+  </header>
+
+<div class="wrap" id="top">
   <header class="hero">
     <div class="badge">社区非官方汇总 · 非 MiniMax / Comfy 官方文档</div>
-    <h1>MiniMax H3 连续视频 / 长视频<br/>社区方案与效果调研报告</h1>
+    <h1>MiniMax H3 连续视频 / 长视频社区方案与效果调研报告</h1>
     <p class="lead">
       覆盖 Reddit、GitHub、Hugging Face、Bilibili、YouTube 与相关 API 文档，
       区分<strong>官方开放权重 + ComfyUI 原生能力</strong>与<strong>社区自定义节点 / 工作流 hack</strong>，
@@ -231,27 +514,6 @@
       <span>焦点：连续镜头、分段拼接、音视频同步延长</span>
     </div>
   </header>
-
-  <nav class="toc" aria-label="分类导航">
-    <p class="label">分类导航</p>
-    <ul>
-      <li><a href="#summary">总览与共识</a></li>
-      <li><a href="#top3">可信方案 Top 3</a></li>
-      <li><a href="#official">官方能力边界</a></li>
-      <li><a href="#masked-av">1. 原生 Masked AV / 潜空间续写</a></li>
-      <li><a href="#motion-context">2. Motion Context 运动·音频钉接</a></li>
-      <li><a href="#fl2va">3. FL2VA 首尾帧 + 质量重置</a></li>
-      <li><a href="#pixel-chain">4. 末帧当首帧（像素链路）</a></li>
-      <li><a href="#ref2va">5. Ref2VA / V2V 参考续写</a></li>
-      <li><a href="#storyboard">6. Storyboard / 导演台多段</a></li>
-      <li><a href="#audio">7. 音频驱动 / Talking Avatar</a></li>
-      <li><a href="#upscale">8. 低分长渲 + 放大拼接</a></li>
-      <li><a href="#models">9. 模型与量化基建</a></li>
-      <li><a href="#matrix">方案对照表</a></li>
-      <li><a href="#blind">搜索盲区</a></li>
-      <li><a href="#sources">来源索引</a></li>
-    </ul>
-  </nav>
 
   <section class="card" id="summary">
     <h2>总览与社区共识</h2>
@@ -274,6 +536,27 @@
       <li><strong>FL2VA 尾帧常冻结</strong>：Infinite Continuation Suite 专门做 Auto Handover，切掉不稳定 landing tail 再交接。</li>
       <li><strong>Turbo / 过蒸馏 LoRA 对长链更脆</strong>：HF 讨论与官方文档均提示续接更易「烧片」；长片不少人关掉 turbo，改 Spectrum / Sage / Kitchen。</li>
       <li><strong>Ref 模式与首尾帧锚定互斥</strong>（Hailuo/官方参考用法讨论）：延长时要在「锚帧」与「视频参考槽」之间二选一。</li>
+    </ul>
+  </section>
+
+  <section class="card" id="team-notes">
+    <h2>团队调研备注（收口）</h2>
+    <div class="callout">
+      <strong>阶段定位：</strong>本期只做调研与方案归类，<strong>本机不跑模、不落地实现</strong>。接口契约、评测脚本、CI、服务骨架一律先记结论，等定路线与有真机/API 后再动手。
+    </div>
+    <ul class="notes-list">
+      <li>
+        <span class="role">客户端</span>
+        <p><strong>Storyboard</strong> 在产品里就是时间轴 + 分段任务态（可重跑单段、预览拼接），比单次长请求更贴近真实 UX。交接协议应当成<strong>对外 API 契约</strong>：overlap 帧数、latent vs 像素、音频时间坐标——前端才能做进度、取消与失败重试。Avatar 云拼（约 3 分钟口播）客户端最轻，适合先做口播路径。</p>
+      </li>
+      <li>
+        <span class="role">后端</span>
+        <p>生产上别做成「一次超长 forward」，应做成 <strong>5–15s chunk 队列 + 段间状态机</strong>：下一段只吃上一段 AV latent 尾窗（Masked AV / Motion Context），音频用时间坐标续写，最后再 stitch；像素末帧 I2V 链当兜底。若以后接服务，形态建议 <code>create_job(storyboard)</code> → <code>extend(segment_id, overlap_latent, audio_t)</code> → <code>stitch</code>。显存侧可记 pruned int8 / 低分长渲再放大；Turbo 类蒸馏长链慎用。CI 与批测脚本<strong>本期不做</strong>。</p>
+      </li>
+      <li>
+        <span class="role">数据</span>
+        <p>公开集多为短片段，几乎没有带 overlap 的接缝标注。若将来要量化「音画接缝 / 身份漂移」，需自建按 overlap（如 22 / 39 帧）切好的测试集。指标可含：音频互相关（接缝前后窗口，社区目标约 ≥0.95）、Laplacian 方差衰减、可选 PSNR / 身份 embedding 距离——<strong>本期只留方案，不落地</strong>。</p>
+      </li>
     </ul>
   </section>
 
@@ -305,6 +588,7 @@
   <section class="card" id="official">
     <h2>官方能力边界（ComfyUI 文档）</h2>
     <p class="muted small">来源：<a href="https://docs.comfy.org/zh/tutorials/video/minimax/minimax-h3" target="_blank" rel="noopener">ComfyUI MiniMax H3 中文指南</a>（调研时已抓取）。</p>
+    <div class="table-wrap" role="region" aria-label="官方能力边界表" tabindex="0">
     <table>
       <thead><tr><th>项目</th><th>说明</th></tr></thead>
       <tbody>
@@ -317,10 +601,10 @@
         <tr><td>与托管 API</td><td>本地开放权重约 1MP/24fps；2K 等来自托管服务，需另放大</td></tr>
       </tbody>
     </table>
+    </div>
     <div class="callout"><strong>重要区分：</strong>官方「能生成较长 length」≠「社区意义上的无缝连续长片」。后者几乎都是多段 + 交接协议。</div>
   </section>
 
-  <!-- 1 -->
   <section class="card" id="masked-av">
     <h2>1. 原生 Masked AV / 潜空间续写（state / memory handoff）</h2>
     <div class="chips">
@@ -395,7 +679,6 @@
     </div>
   </section>
 
-  <!-- 2 -->
   <section class="card" id="motion-context">
     <h2>2. Motion Context：运动 + 音频钉接（keyframe / guide 链）</h2>
     <div class="chips">
@@ -453,7 +736,6 @@
     </div>
   </section>
 
-  <!-- 3 -->
   <section class="card" id="fl2va">
     <h2>3. FL2VA 首尾帧驱动 + 质量重置（first-last frame）</h2>
     <div class="chips">
@@ -486,7 +768,6 @@
     <p class="small muted">可播放 demo 见上一节 Suite v1.4 / v1.2 视频（同一技术栈的 FL2VA 多段链）。</p>
   </section>
 
-  <!-- 4 -->
   <section class="card" id="pixel-chain">
     <h2>4. 末帧当首帧（pixel / I2V 朴素链路）</h2>
     <div class="chips">
@@ -530,7 +811,6 @@
     <p class="muted small">公开可嵌 mp4：未找到与「纯末帧链劣化对比」绑定的稳定直链；效果请以 Reddit 帖内嵌媒体为准。</p>
   </section>
 
-  <!-- 5 -->
   <section class="card" id="ref2va">
     <h2>5. Ref2VA / V2V：视频·图像·音频参考续写</h2>
     <div class="chips">
@@ -574,7 +854,6 @@
     </div>
   </section>
 
-  <!-- 6 -->
   <section class="card" id="storyboard">
     <h2>6. Storyboard / 导演台：多提示词分段生产</h2>
     <div class="chips">
@@ -614,7 +893,6 @@
     </div>
   </section>
 
-  <!-- 7 -->
   <section class="card" id="audio">
     <h2>7. 音频驱动延长 / Talking Avatar</h2>
     <div class="chips">
@@ -649,7 +927,6 @@
     </div>
   </section>
 
-  <!-- 8 -->
   <section class="card" id="upscale">
     <h2>8. 低分辨率长渲 + 放大拼接（upscale + stitch）</h2>
     <div class="chips">
@@ -667,7 +944,6 @@
     <p class="muted small">公开直链 demo：讨论中引用的 Civitai 示例图/视频依赖站点登录与 CDN，本报告<strong>不内嵌不可靠直链</strong>。</p>
   </section>
 
-  <!-- 9 -->
   <section class="card" id="models">
     <h2>9. 模型与量化基建（支撑长片的算力前提）</h2>
     <p>长片方案都假设你能反复跑 H3。社区常用：</p>
@@ -684,6 +960,7 @@
 
   <section class="card" id="matrix">
     <h2>方案对照表</h2>
+    <div class="table-wrap" role="region" aria-label="方案对照表" tabindex="0">
     <table>
       <thead>
         <tr>
@@ -754,6 +1031,16 @@
         </tr>
       </tbody>
     </table>
+    </div>
+    <div class="matrix-cards" aria-label="方案对照（卡片）">
+      <div class="matrix-card"><h4>Masked AV / Guided latent</h4><dl><dt>连续性</dt><dd>高</dd><dt>画质抗劣化</dt><dd>高</dd><dt>音频连续</dt><dd>高</dd><dt>上手</dt><dd>中–难</dd><dt>上限策略</dt><dd>无限段；主动切镜保质</dd></dl></div>
+      <div class="matrix-card"><h4>Motion Context</h4><dl><dt>连续性</dt><dd>高</dd><dt>画质抗劣化</dt><dd>中–高</dd><dt>音频连续</dt><dd>高</dd><dt>上手</dt><dd>中</dd><dt>上限策略</dt><dd>多 clip 硬接/轻 trim</dd></dl></div>
+      <div class="matrix-card"><h4>FL2VA + handover</h4><dl><dt>连续性</dt><dd>高（有落幅）</dd><dt>画质抗劣化</dt><dd>高（可重置）</dd><dt>音频连续</dt><dd>中–高</dd><dt>上手</dt><dd>中</dd><dt>上限策略</dt><dd>分镜驱动长叙事</dd></dl></div>
+      <div class="matrix-card"><h4>末帧 I2V 链</h4><dl><dt>连续性</dt><dd>中</dd><dt>画质抗劣化</dt><dd>低（多 hop）</dd><dt>音频连续</dt><dd>低</dd><dt>上手</dt><dd>易</dd><dt>上限策略</dt><dd>少 hop / 常切镜</dd></dl></div>
+      <div class="matrix-card"><h4>Ref2VA / V2V extend</h4><dl><dt>连续性</dt><dd>中–高</dd><dt>画质抗劣化</dt><dd>中–高</dd><dt>音频连续</dt><dd>中</dd><dt>上手</dt><dd>中</dd><dt>上限策略</dt><dd>延长成片 + 参考锁</dd></dl></div>
+      <div class="matrix-card"><h4>导演台 / Storyboard</h4><dl><dt>连续性</dt><dd>取决于底层</dd><dt>画质抗劣化</dt><dd>取决于底层</dd><dt>音频连续</dt><dd>取决于底层</dd><dt>上手</dt><dd>易–中（UX）</dd><dt>上限策略</dt><dd>制片流程</dd></dl></div>
+      <div class="matrix-card"><h4>Avatar API</h4><dl><dt>连续性</dt><dd>中（服务端拼）</dd><dt>画质抗劣化</dt><dd>中</dd><dt>音频连续</dt><dd>极高（音频主导）</dd><dt>上手</dt><dd>易</dd><dt>上限策略</dt><dd>~3 min 口播</dd></dl></div>
+    </div>
   </section>
 
   <section class="card" id="blind">
@@ -807,11 +1094,35 @@
     </div>
   </section>
 
-  <footer>
+  <footer class="site-footer">
     <p><strong>免责声明：</strong>本页为社区公开信息的非官方调研汇总，不代表 MiniMax、Comfy、各仓库作者立场。链接与节点行为可能随时间失效；商用请自行核对 MiniMax / Comfy 许可与各地区社区许可条款。</p>
-    <p>调研与页面生成日期：<strong>2026-10-23（Asia/Taipei，UTC+8）</strong>。可播放 demo 仅嵌入调研时 HTTP 可访问的公开 URL；无直链处已明确标注。</p>
+    <p>公开页：<a href="https://lanyuer.github.io/minimax-h3-longvideo-report/">https://lanyuer.github.io/minimax-h3-longvideo-report/</a><br />
+       仓库：<a href="https://github.com/lanyuer/minimax-h3-longvideo-report">lanyuer/minimax-h3-longvideo-report</a></p>
+    <p>调研与页面修订：<strong>2026-10-23（Asia/Taipei，UTC+8）</strong>。可播放 demo 仅嵌入调研时 HTTP 可访问的公开 URL；无直链处已明确标注。</p>
     <p class="small">本地预览：在项目目录执行 <code>python -m http.server 8765</code>，浏览器打开 <code>http://127.0.0.1:8765/</code>。</p>
   </footer>
 </div>
+
+<script>
+(function () {
+  var btn = document.getElementById('navToggle');
+  var panel = document.getElementById('tocPanel');
+  if (!btn || !panel) return;
+  function setOpen(open) {
+    panel.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.textContent = open ? '关闭' : '目录';
+  }
+  btn.addEventListener('click', function () {
+    setOpen(!panel.classList.contains('open'));
+  });
+  panel.addEventListener('click', function (e) {
+    if (e.target.closest('a')) setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') setOpen(false);
+  });
+})();
+</script>
 </body>
 </html>
